@@ -32,24 +32,28 @@ def postprocess(self, net_out, im, save=True):
 
     resultsForJSON = []
 
+
     # 预处理boxes，因为同一人物不可能同时出现多个，因此只保留confidence最大的人物box
     # 记录最大概率
     pro_max = [-1, -1, -1]
     # 记录3人各自最大confidence的index
-    pro_max_index = [0, 0, 0]
+    pro_max_index = [-1, -1, -1]
     boxes_post = []
     for i, b in enumerate(boxes):
-        boxResults = self.framework.process_box(b, h, w, threshold)
+        boxResults = self.framework.process_box(b, h, w, 0)
         if boxResults is None:
             continue
-        _, _, _, _, _, max_indx, confidence = boxResults
+        _, _, _, _, mess, max_indx, confidence = boxResults
+        print('in boxes:', mess, max_indx, confidence)
         if confidence > pro_max[max_indx]:
             pro_max[max_indx] = confidence
             pro_max_index[max_indx] = i
 
     for i in range(len(pro_max_index)):
-        if len(boxes) > pro_max_index[i]:
+        if pro_max_index[i] != -1:
             boxes_post.append(boxes[pro_max_index[i]])
+
+    # print(len(boxes), '------->', len(boxes_post))
 
     if len(boxes_post) != 0:
         for b in boxes_post:
@@ -57,6 +61,7 @@ def postprocess(self, net_out, im, save=True):
             if boxResults is None:
                 continue
             left, right, top, bot, mess, max_indx, confidence = boxResults
+            print('in boxes_post:', mess, max_indx, confidence)
 
             thick = int((h + w) // 300)
             if self.FLAGS.json:
@@ -68,7 +73,7 @@ def postprocess(self, net_out, im, save=True):
             cv2.rectangle(imgcv,
                           (left, top), (right, bot),
                           colors[max_indx], thick)
-            cv2.putText(imgcv, mess + ' ' + str(float('%.2f' % confidence)), (left, top - 12),
+            cv2.putText(imgcv, mess + ' ' + str(float('%.2f' % confidence)), (left, top + 22),
                         0, 1e-3 * h, colors[max_indx], thick // 3)
 
             # 给雪菜打码
@@ -98,11 +103,11 @@ def postprocess(self, net_out, im, save=True):
 
 if __name__ == "__main__":
     options = {
-        'model': 'cfg/tiny-yolo-voc-wa1.cfg',
-        'load': 1500,
-        'threshold': 0.05,
+        'model': 'cfg/yolo-wa1.cfg',
+        'load': -1,
+        'threshold': 0.08,
         'gpu': 0.8,
-        'imgdir': 'sample_img\wa',
+        'imgdir': 'sample_img/box_test',
     }
     pool = ThreadPool()
     tfnet = TFNet(options)
